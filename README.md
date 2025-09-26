@@ -5,5 +5,5 @@ That spawned this idea, what if i get a magic 8 ball printed in acrylic with a Q
 
 ## Final feature list
 - Can shake mobile device to get response
-- Can add responses to the magic 9 ball
+- Can add responses to the magic 8 ball
 - Can obviously ask it questions
