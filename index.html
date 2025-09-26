@@ -1,0 +1,168 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Magic 8 • for you</title>
+<style>
+  :root{--bg:#0b0f14;--ball:#0b0b0b;--glass:#0a3a66;--tri:#0a5ea8;--text:#f3fbff}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#021428 0%, #041726 60%);color:var(--text);padding:28px}
+  .scene{width:360px;max-width:92vw}
+  .ball{
+    width:360px;height:360px;border-radius:50%;background:radial-gradient(circle at 30% 20%, #292f36 0%, #000 45%);box-shadow:0 10px 30px rgba(2,6,12,0.8), inset 0 -6px 18px rgba(0,0,0,0.6);
+    position:relative;display:flex;align-items:center;justify-content:center;margin:0 auto;
+    transform-origin:center center;
+    transition:transform .35s ease-out;
+  }
+  .gloss{position:absolute;left:18%;top:16%;width:36%;height:18%;border-radius:40%;background:linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.02));transform:rotate(-18deg);filter:blur(0.8px);opacity:0.85}
+  .inner-white{width:160px;height:160px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;box-shadow: inset 0 4px 10px rgba(0,0,0,0.12)}
+  .triangle{
+    width:0;height:0;border-left:64px solid transparent;border-right:64px solid transparent;border-bottom:110px solid var(--tri);
+    transform:translateY(-10px) rotate(0deg); position:relative;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .answer{
+    width:170px; text-align:center;color:white;padding:10px;font-weight:600;font-size:14px;line-height:1.2;transform:translateY(10px);
+    font-family: 'Segoe UI', Roboto, system-ui, -apple-system;
+  }
+  .controls{display:flex;gap:10px;justify-content:center;margin-top:18px}
+  button{background:#0a74c2;border:none;color:white;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 6px 14px rgba(10,90,150,0.18)}
+  button:active{transform:translateY(2px)}
+  .hint{color:#b8d6ff;text-align:center;margin-top:10px;font-size:13px}
+  .small{font-size:12px;color:#a8c7e8;margin-top:6px;text-align:center}
+  input[type="text"]{width:220px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text)}
+  footer{margin-top:14px;text-align:center;font-size:12px;color:#97b7da}
+  @media (max-width:420px){
+    .ball{width:72vw;height:72vw}
+    .inner-white{width:34vw;height:34vw}
+    .triangle{border-left:9vw solid transparent;border-right:9vw solid transparent;border-bottom:15vw solid var(--tri)}
+    .answer{width:38vw;font-size:3.6vw}
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div id="ball" class="ball" role="button" aria-label="Magic 8 ball - tap or press Shake">
+    <div class="gloss"></div>
+    <div class="inner-white">
+      <div class="triangle" id="triangle">
+        <div class="answer" id="answer">ask me anything</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:12px;">
+    <button id="shake">Shake</button>
+    <button id="randomize">Randomize color</button>
+  </div>
+
+  <div class="hint">Tip: click/tap the ball or press <strong>Shake</strong> — long-press to add your own answers.</div>
+
+  <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+    <input id="custom" type="text" placeholder="Add a short answer and press Enter (optional)"/>
+  </div>
+  <div class="small">Host this file on your site, then make a QR that points to its URL</div>
+  <footer>Made with code + a little bit of fortune ✨</footer>
+</div>
+
+<script>
+(() => {
+  const answersDefault = [
+    "It is certain",
+    "Without a doubt",
+    "You may rely on it",
+    "Yes — definitely",
+    "As I see it, yes",
+    "Most likely",
+    "Outlook good",
+    "Yes",
+    "Signs point to yes",
+    "Reply hazy, try again",
+    "Ask again later",
+    "Better not tell you now",
+    "Cannot predict now",
+    "Concentrate and ask again",
+    "Don't count on it",
+    "My reply is no",
+    "My sources say no",
+    "Outlook not so good",
+    "Very doubtful",
+    "Absolutely yes"
+  ];
+
+  // load custom answers from localStorage or URL param answers= separated by |
+  function getURLAnswers(){
+    try{
+      const p = new URLSearchParams(location.search).get('answers');
+      if(p) return decodeURIComponent(p).split('|').filter(Boolean);
+    }catch(e){}
+    return null;
+  }
+  const paramAnswers = getURLAnswers();
+  const stored = JSON.parse(localStorage.getItem('magic8_answers') || 'null');
+  const answers = (paramAnswers && paramAnswers.length>0) ? paramAnswers : (stored && stored.length>0 ? stored : answersDefault);
+
+  const ball = document.getElementById('ball');
+  const tri = document.getElementById('triangle');
+  const ansEl = document.getElementById('answer');
+  const shakeBtn = document.getElementById('shake');
+  const randBtn = document.getElementById('randomize');
+  const input = document.getElementById('custom');
+
+  function pick(){
+    return answers[Math.floor(Math.random()*answers.length)];
+  }
+  function show(text){
+    ansEl.textContent = text;
+  }
+
+  function doShake(){
+    ball.style.transform = 'rotate(-18deg) translateY(-6px) scale(0.99)';
+    tri.style.transition = 'transform .6s cubic-bezier(.2,.9,.2,1)';
+    tri.style.transform = 'translateY(-6px) rotate(-6deg) scale(1)';
+    setTimeout(()=> {
+      const a = pick();
+      show(a);
+      ball.style.transform = 'rotate(0deg) translateY(0) scale(1)';
+      tri.style.transform = 'translateY(0) rotate(0) scale(1)';
+    }, 600);
+  }
+
+  ball.addEventListener('click', doShake);
+  shakeBtn.addEventListener('click', doShake);
+
+  randBtn.addEventListener('click', ()=> {
+    const hue = Math.floor(Math.random()*360);
+    document.documentElement.style.setProperty('--tri','hsl('+hue+',72%,38%)');
+  });
+
+  input.addEventListener('keydown',(e)=>{
+    if(e.key==='Enter'){
+      const t = input.value.trim();
+      if(t){
+        answers.push(t);
+        localStorage.setItem('magic8_answers', JSON.stringify(answers));
+        show('added: ' + t);
+        input.value='';
+      }
+    }
+  });
+
+  // support device shake detection (simple)
+  if('ondevicemotion' in window){
+    let last = 0, accCount = 0;
+    window.addEventListener('devicemotion', e=>{
+      const a = e.accelerationIncludingGravity;
+      if(!a) return;
+      const mag = Math.sqrt((a.x||0)**2+(a.y||0)**2+(a.z||0)**2);
+      if(mag > 18){ accCount++; if(accCount>1){ doShake(); accCount=0; } }
+      if(Date.now()-last>1000) accCount=0;
+      last = Date.now();
+    });
+  }
+})();
+</script>
+</body>
+</html>
