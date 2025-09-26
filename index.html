@@ -207,66 +207,89 @@
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }
 
-  async function setupMotionDetection() {
-    if (!isMobileDevice()) return; // Only enable on mobile devices
+  let motionPermissionGranted = false;
 
-    // Check if DeviceOrientationEvent is supported and ask for permissions if needed
-    if (typeof DeviceOrientationEvent !== 'undefined') {
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          const permission = await DeviceOrientationEvent.requestPermission();
-          if (permission !== 'granted') return;
-        } catch (error) {
-          console.log('Motion permission denied');
-          return;
+  async function requestMotionPermission() {
+    if (!isMobileDevice()) return true;
+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        motionPermissionGranted = permission === 'granted';
+        if (motionPermissionGranted) {
+          setupMotionListeners();
         }
+        return motionPermissionGranted;
+      } catch (error) {
+        console.log('Motion permission denied or failed:', error);
+        return false;
       }
-
-      let lastTime = 0;
-      let lastX = 0, lastY = 0, lastZ = 0;
-      let shakeDetected = false;
-
-      window.addEventListener('devicemotion', (event) => {
-        const acceleration = event.accelerationIncludingGravity;
-        if (!acceleration) return;
-
-        const currentTime = Date.now();
-        if (currentTime - lastTime < 100) return; // Throttle to every 100ms
-
-        const x = acceleration.x || 0;
-        const y = acceleration.y || 0;
-        const z = acceleration.z || 0;
-
-        const deltaX = Math.abs(x - lastX);
-        const deltaY = Math.abs(y - lastY);
-        const deltaZ = Math.abs(z - lastZ);
-
-        const totalDelta = deltaX + deltaY + deltaZ;
-
-        if (totalDelta > 25 && !shakeDetected) {
-          shakeDetected = true;
-          showShakeIndicator();
-          doShake();
-          
-          // Reset shake detection after 1 second
-          setTimeout(() => {
-            shakeDetected = false;
-          }, 1000);
-        }
-
-        lastX = x;
-        lastY = y;
-        lastZ = z;
-        lastTime = currentTime;
-      });
+    } else {
+      // For devices that don't need permission (Android, older iOS)
+      motionPermissionGranted = true;
+      setupMotionListeners();
+      return true;
     }
   }
 
-  // Setup motion detection on user interaction (required for permissions)
-  document.addEventListener('click', setupMotionDetection, { once: true });
-  
-  // Also try to setup immediately for devices that don't require permission
-  setupMotionDetection();
+  function setupMotionListeners() {
+    if (!motionPermissionGranted) return;
+
+    let lastTime = 0;
+    let lastX = 0, lastY = 0, lastZ = 0;
+    let shakeDetected = false;
+
+    window.addEventListener('devicemotion', (event) => {
+      const acceleration = event.accelerationIncludingGravity;
+      if (!acceleration) return;
+
+      const currentTime = Date.now();
+      if (currentTime - lastTime < 100) return; // Throttle to every 100ms
+
+      const x = acceleration.x || 0;
+      const y = acceleration.y || 0;
+      const z = acceleration.z || 0;
+
+      const deltaX = Math.abs(x - lastX);
+      const deltaY = Math.abs(y - lastY);
+      const deltaZ = Math.abs(z - lastZ);
+
+      const totalDelta = deltaX + deltaY + deltaZ;
+
+      if (totalDelta > 25 && !shakeDetected) {
+        shakeDetected = true;
+        showShakeIndicator();
+        doShake();
+        
+        // Reset shake detection after 1 second
+        setTimeout(() => {
+          shakeDetected = false;
+        }, 1000);
+      }
+
+      lastX = x;
+      lastY = y;
+      lastZ = z;
+      lastTime = currentTime;
+    });
+  }
+
+  // Try to request permission immediately on page load
+  window.addEventListener('load', () => {
+    if (isMobileDevice()) {
+      // Small delay to ensure page is fully loaded
+      setTimeout(() => {
+        requestMotionPermission();
+      }, 500);
+    }
+  });
+
+  // Fallback: request permission on first user interaction if not already granted
+  document.addEventListener('click', () => {
+    if (isMobileDevice() && !motionPermissionGranted) {
+      requestMotionPermission();
+    }
+  }, { once: true });
 })();
 </script>
 </body>
